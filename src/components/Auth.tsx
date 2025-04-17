@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
 
 import "./Auth.scss"
 
@@ -8,9 +9,14 @@ const Auth = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [checkPassword, setCheckPassword] = useState('')
+    const [error, setError] = useState('');
+
+    const navigate = useNavigate()
+    
 
     const clickAuthMode  = () => {
         setIsLoggin((prev) => !prev)
+        setError('')
     }
 
     useEffect (() => {
@@ -24,15 +30,40 @@ const Auth = () => {
 
     const handleAuthAction = () => {
         if (!email || !password) {
+            setError('Введите email и пароль');
             return;
         }
-        if (!isLoggin && password !== checkPassword) {
-            return;
+    
+        const usersCookie = Cookies.get('users');
+        const users = usersCookie ? JSON.parse(usersCookie) : {};
+    
+        if (isLoggin) {
+            if (users[email] && users[email] === password) {
+                Cookies.set('authStatus', 'login');
+                Cookies.set('userEmail', email);
+                navigate("/joblist");
+            } else {
+                setError('Неверный логин или пароль');
+            }
+        } else {
+            if (users[email]) {
+                setError('Такой пользователь уже зарегистрирован');
+                return;
+            }
+            if (password !== checkPassword) {
+                setError('Пароли не совпадают');
+                return;
+            }
+    
+            const updatedUsers = { ...users, [email]: password };
+            Cookies.set('users', JSON.stringify(updatedUsers));
+    
+            Cookies.set('authStatus', 'login');
+            Cookies.set('userEmail', email);
+            navigate("/joblist");
         }
-        Cookies.set('authStatus', 'login')
-        Cookies.set('userEmail', email)
-        console.log('click button')
     }
+    
     
     return(
         <div className="auth">
@@ -64,6 +95,8 @@ const Auth = () => {
                     /> }
 
                 <button onClick={handleAuthAction}>{isLoggin ? "Войти" : "Зарегистрироваться"}</button>
+                {error && <p className="error">{error}</p>}
+
 
                 <div>
                     {isLoggin ? (
